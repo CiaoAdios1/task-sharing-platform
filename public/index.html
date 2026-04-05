@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>多人任务共享平台</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- 登录/注册页面 -->
+<div id="authPage" class="page">
+  <div class="auth-container">
+    <h1>多人任务共享平台</h1>
+    <div id="loginForm" class="auth-form">
+      <h2>登录</h2>
+      <input type="text" id="loginUsername" placeholder="用户名" autocomplete="off">
+      <input type="password" id="loginPassword" placeholder="密码">
+      <button onclick="login()">登录</button>
+      <p>还没有账号？<a href="#" onclick="showRegister()">注册</a></p>
+    </div>
+    <div id="registerForm" class="auth-form" style="display:none">
+      <h2>注册</h2>
+      <input type="text" id="regUsername" placeholder="用户名" autocomplete="off">
+      <input type="password" id="regPassword" placeholder="密码">
+      <label>选择你的颜色：</label>
+      <div id="colorPicker" class="color-picker"></div>
+      <input type="hidden" id="selectedColor" value="">
+      <button onclick="register()">注册</button>
+      <p>已有账号？<a href="#" onclick="showLogin()">登录</a></p>
+    </div>
+  </div>
+</div>
+
+<!-- 主应用页面 -->
+<div id="appPage" class="page" style="display:none">
+  <!-- 顶部导航 -->
+  <header class="app-header">
+    <div class="header-left">
+      <h1>任务共享平台</h1>
+    </div>
+    <div class="header-center">
+      <nav class="view-tabs">
+        <button class="tab-btn active" data-view="board">看板</button>
+        <button class="tab-btn" data-view="day">日</button>
+        <button class="tab-btn" data-view="week">周</button>
+        <button class="tab-btn" data-view="month">月</button>
+        <button class="tab-btn" data-view="my">我的</button>
+      </nav>
+    </div>
+    <div class="header-right">
+      <div class="header-icon" onclick="openUserManagement()" title="用户管理">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+          <circle cx="9" cy="7" r="4"></circle>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+        </svg>
+      </div>
+      <div class="notification-bell" onclick="toggleNotificationPanel()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+        </svg>
+        <span id="notifCount" class="notif-badge" style="display:none">0</span>
+      </div>
+      <div class="user-info">
+        <span id="currentUserBadge" class="user-badge"></span>
+        <span id="currentUserName"></span>
+      </div>
+      <button class="btn-logout" onclick="logout()">退出</button>
+    </div>
+  </header>
+
+  <!-- 通知面板 -->
+  <div id="notificationPanel" class="notification-panel" style="display:none">
+    <h3>通知</h3>
+    <div id="notificationList"></div>
+  </div>
+
+  <!-- 主内容区 -->
+  <main class="app-main">
+    <!-- 看板视图 -->
+    <div id="boardView" class="view active-view">
+      <div class="board-header">
+        <h2>看板</h2>
+        <button class="btn-add" onclick="openTaskModal()">+ 新建任务</button>
+      </div>
+      <div class="board-columns">
+        <div class="board-col" data-status="待办">
+          <div class="col-header"><span class="col-dot todo"></span>待办</div>
+          <div class="col-tasks" id="colTodo"></div>
+        </div>
+        <div class="board-col" data-status="进行中">
+          <div class="col-header"><span class="col-dot inprogress"></span>进行中</div>
+          <div class="col-tasks" id="colInProgress"></div>
+        </div>
+        <div class="board-col" data-status="已完成">
+          <div class="col-header"><span class="col-dot done"></span>已完成</div>
+          <div class="col-tasks" id="colDone"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 日视图 -->
+    <div id="dayView" class="view">
+      <div class="calendar-header">
+        <button onclick="navDate(-1)">◀</button>
+        <h2 id="dayTitle"></h2>
+        <button onclick="navDate(1)">▶</button>
+        <button class="btn-today" onclick="goToday()">今天</button>
+        <button class="btn-add" onclick="openTaskModal()">+ 新建任务</button>
+      </div>
+      <div id="dayContent" class="day-timeline"></div>
+    </div>
+
+    <!-- 周视图 -->
+    <div id="weekView" class="view">
+      <div class="calendar-header">
+        <button onclick="navDate(-7)">◀</button>
+        <h2 id="weekTitle"></h2>
+        <button onclick="navDate(7)">▶</button>
+        <button class="btn-today" onclick="goToday()">今天</button>
+        <button class="btn-add" onclick="openTaskModal()">+ 新建任务</button>
+      </div>
+      <div id="weekContent" class="week-grid"></div>
+    </div>
+
+    <!-- 月视图 -->
+    <div id="monthView" class="view">
+      <div class="calendar-header">
+        <button onclick="navMonth(-1)">◀</button>
+        <h2 id="monthTitle"></h2>
+        <button onclick="navMonth(1)">▶</button>
+        <button class="btn-today" onclick="goToday()">今天</button>
+        <button class="btn-add" onclick="openTaskModal()">+ 新建任务</button>
+      </div>
+      <div id="monthContent" class="month-grid"></div>
+    </div>
+
+    <!-- 我的视图 -->
+    <div id="myView" class="view">
+      <div class="board-header">
+        <h2>我的任务</h2>
+        <button class="btn-add" onclick="openTaskModal()">+ 新建任务</button>
+      </div>
+      <div class="my-filters">
+        <button class="filter-btn active" data-filter="all">全部</button>
+        <button class="filter-btn" data-filter="created">我创建的</button>
+        <button class="filter-btn" data-filter="assigned">分配给我</button>
+        <button class="filter-btn" data-filter="participating">我参与的</button>
+      </div>
+      <div id="myTaskList" class="my-task-list"></div>
+    </div>
+  </main>
+</div>
+
+<!-- 新建/编辑任务模态框 -->
+<div id="taskModal" class="modal" style="display:none">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 id="taskModalTitle">新建任务</h2>
+      <button class="modal-close" onclick="closeTaskModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>标题 *</label>
+        <input type="text" id="taskTitle" placeholder="任务标题">
+      </div>
+      <div class="form-group">
+        <label>描述</label>
+        <textarea id="taskDesc" placeholder="任务描述" rows="3"></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>优先级</label>
+          <select id="taskPriority">
+            <option value="低">低</option>
+            <option value="中" selected>中</option>
+            <option value="高">高</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>负责人</label>
+          <select id="taskAssignee"></select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>截止日期 *</label>
+          <input type="date" id="taskDueDate">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>开始时间</label>
+          <input type="time" id="taskStartTime">
+        </div>
+        <div class="form-group">
+          <label>结束时间</label>
+          <input type="time" id="taskEndTime">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>邀请参与者</label>
+        <div id="participantPicker" class="participant-picker"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeTaskModal()">取消</button>
+      <button class="btn-submit" onclick="saveTask()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 任务详情模态框 -->
+<div id="taskDetailModal" class="modal" style="display:none">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 id="detailTitle"></h2>
+      <button class="modal-close" onclick="closeDetailModal()">&times;</button>
+    </div>
+    <div class="modal-body" id="detailBody"></div>
+    <div class="modal-footer" id="detailFooter"></div>
+  </div>
+</div>
+
+<!-- 用户管理模态框 -->
+<div id="userMgmtModal" class="modal" style="display:none">
+  <div class="modal-content modal-wide">
+    <div class="modal-header">
+      <h2>用户管理</h2>
+      <button class="modal-close" onclick="closeUserMgmt()">&times;</button>
+    </div>
+    <div class="modal-body" id="userMgmtBody"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeUserMgmt()">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- 修改密码模态框 -->
+<div id="changePwdModal" class="modal" style="display:none">
+  <div class="modal-content" style="width:380px">
+    <div class="modal-header">
+      <h2>修改密码</h2>
+      <button class="modal-close" onclick="closeChangePwd()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>当前密码</label>
+        <input type="password" id="oldPassword" placeholder="输入当前密码">
+      </div>
+      <div class="form-group">
+        <label>新密码</label>
+        <input type="password" id="newPassword" placeholder="输入新密码">
+      </div>
+      <div class="form-group">
+        <label>确认新密码</label>
+        <input type="password" id="confirmPassword" placeholder="再次输入新密码">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeChangePwd()">取消</button>
+      <button class="btn-submit" onclick="submitChangePwd()">确认修改</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
